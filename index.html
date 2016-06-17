@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Path Finder Demo</title>
+    <link rel="stylesheet"
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7"
+          crossorigin="anonymous">
+</head>
+<body ng-app="pathFinderDemo">
+    <div ng-controller="pathFinderController">
+        <form novalidate>
+            <div>
+                <div>
+                    <Label class="control-label" for="maximumTime">Temps de parcours (h):</Label>
+                    <div style="width: 100px;">
+                        <input type="text"
+                               id="maximumTime"
+                               class="form-control input-sm"
+                               ng-model="data.maxTime" />
+                    </div>
+                </div>
+                <br />
+
+                <div>
+                    <label for="speedSelect">Vitesse de déplacement (km/h): </label>
+                    <div style="width: 100px;">
+                        <select name="speedSelect"
+                                class="form-control input-sm"
+                                id="speedSelect"
+                                ng-model="data.speed"
+                                ng-options="option.value for option in data.Speeds track by option.id">
+                        </select>
+                    </div>
+                </div>
+
+                <br/>
+
+                <div>
+                    <label for="startSelect">Point de départ :</label>
+                    <div style="width: 100px;">
+                        <select name="startSelect"
+                                class="form-control input-sm"
+                                id="startSelect"
+                                ng-model="data.start"
+                                ng-options="option.value for option in data.Points track by option.id">
+                        </select>
+                    </div>
+                </div>
+
+                <br/>
+
+                <div>
+                    <input type="submit"
+                           class="btn btn-primary"
+                           ng-click="update(data.start.value, data.speed.value, data.travelTime)"
+                           value="Évaluer" />
+                </div>
+
+            </div>
+        </form>
+
+        <div class="table-responsive ng-hide" ng-show="matrix">
+            <table class="table table-striped" style="width: 25%;margin:20px;text-align:center;" >
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th style="text-align: center" ng-repeat="row in matrix track by $index" scope="row">
+                            {{data.Points[$index].value}}
+                        </th>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="row in matrix track by $index">
+                        <th style="text-align: center" scope="row">{{data.Points[$index].value}}</th>
+                        <td ng-repeat="elem in row track by $index">
+                            {{elem | number:2}}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <br>
+        <h4>Critères:</h4>
+        <p>Temps maximum = {{data.maxTime}} h</p>
+        <p>Vitesse = {{data.speed.value}}</p>
+        <p>Point de départ = {{data.start.value}}</p>
+
+        <pre>
+
+
+        </pre>
+    </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+            integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+            crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.6/angular.min.js"></script>
+    <script type="text/javascript" src="src/pathfinder.js"></script>
+</body>
+</html>
