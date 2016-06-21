@@ -1,2 +1,2 @@
 # PathFinder
-Basic greedy path finding algorithm in JavaScript
+Basic circuit path finding algorithm in JavaScript
