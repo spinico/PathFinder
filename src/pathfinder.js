@@ -34,7 +34,9 @@ angular.module('pathFinderDemo', [])
         $scope.MST = null; // Minimum spanning tree
         $scope.ODV = null; // Odd Degree Vertex
         $scope.MME = null; // Minimum Matching Edges
-        $scope.cycle = null; // Approx circuit
+        $scope.BC = null; // Basic cycle
+        $scope.EC = null; // Eulerian circuit (passing on each edges once)
+        $scope.HC = null; // Hamiltonian circuit (passing on each vertices once)
 
         var pathFinder = pathFinderService;
 
@@ -46,9 +48,11 @@ angular.module('pathFinderDemo', [])
 
             $scope.MME = pathFinder.getMinimumMatchingEdges($scope.ODV, $scope.data.Distances);
 
-            $scope.cycle = pathFinder.getBaseCycle($scope.MST, $scope.MME);
+            $scope.BC = pathFinder.getBaseCycle($scope.MST, $scope.MME);
 
-            $scope.circuit = pathFinder.getEulerianCircuit($scope.data.Points, start.id, $scope.cycle);
+            $scope.EC = pathFinder.getEulerianCircuit($scope.data.Points, start.id, $scope.BC);
+
+            $scope.HC = pathFinder.getHamiltonianCircuit($scope.data.Points, start.id, $scope.EC, $scope.data.Distances);
         };
 
     }])
@@ -74,9 +78,10 @@ angular.module('pathFinderDemo', [])
         {
             var A = [];
             var MST = [];
+            var root = Number(start);
 
             // Default start point (arbitrary)
-            A.push(Number(start));
+            A.push(root);
 
             for (var i = 0; i < distances.length; i++)
             {
@@ -148,7 +153,7 @@ angular.module('pathFinderDemo', [])
 
         function getVertexDegree(size, MST)
         {
-            var degree = initializeIntegerArray(size, 0);
+            var degree = initializeArrayOfIntegers(size, 0);
 
             for(var j = 0; j < MST.length; j++)
             {
@@ -219,18 +224,10 @@ angular.module('pathFinderDemo', [])
         PathFinder.getEulerianCircuit = function(points, start, cycle)
         {
             var size = points.length;
-            var circuit = [];
             var root = Number(start);
+            var circuit = copyEdges(cycle);
 
-            for (var i=0; i < cycle.length; i++)
-            {
-                circuit.push({
-                    source: cycle[i].source,
-                    destination: cycle[i].destination
-                });
-            }
-
-            // All vertex must have an equal number of
+            // Each vertex must have an equal number of
             // source and destination
             balanceCircuit(size, circuit);
 
@@ -244,6 +241,195 @@ angular.module('pathFinderDemo', [])
             return findEulerianCircuit(root, markedCircuit);
         };
 
+        PathFinder.getHamiltonianCircuit = function(points, start, circuit, distances)
+        {
+            var size = points.length;
+
+            var HC = copyEdges(circuit);
+
+            var vertices = getMultiPassesOnVertices(size, HC);
+
+            for (var i=0; i < vertices.length; i++)
+            {
+                var pairs = getEdgePairs(vertices[i], HC);
+
+                var shortcuts = findShortcuts(pairs, distances);
+
+                // Apply shortcuts to circuit
+                updateCircuit(shortcuts, HC);
+            }
+
+            return orderFromStartPoint(start, HC);
+        };
+
+        function orderFromStartPoint(start, circuit)
+        {
+            var root = Number(start);
+            var preEdges = [];
+            var postEdges = [];
+            var found = false;
+
+            for (var i=0; i < circuit.length; i++)
+            {
+                var edge = circuit[i];
+
+                if (edge.source === root)
+                {
+                    found = true;
+                }
+
+                if (found)
+                {
+                    postEdges.push(edge);
+                }
+                else
+                {
+                    preEdges.push(edge);
+                }
+            }
+
+            return postEdges.concat(preEdges);
+        }
+
+        function copyEdges(edges)
+        {
+            var a = [];
+
+            for (var i=0; i < edges.length; i++)
+            {
+                a.push({
+                    source: edges[i].source,
+                    destination: edges[i].destination
+                });
+            }
+
+            return a;
+        }
+
+        function updateCircuit(shortcuts, circuit)
+        {
+            for (var i=0; i<shortcuts.length; i++)
+            {
+                var shortcut = shortcuts[i];
+
+                var index = shortcut.index;
+                var edge = {
+                    source: shortcut.edges[0].source,
+                    destination: shortcut.edges[1].destination
+                };
+
+                // When shortcut insertion point is at end of circuit
+                if (index === circuit.length - 1)
+                {
+                    // Insert shortcut
+                    circuit.splice(index,0, edge);
+
+                    // Remove first and last edges
+                    circuit.splice(0, 1);
+                    circuit.splice(0, circuit.length - 1);
+                }
+                else
+                {
+                    // Insert shortcut
+                    circuit.splice(index,0, edge);
+
+                    // Remove the following 2 edges
+                    circuit.splice(index+1, 2);
+                }
+            }
+        }
+
+        function findShortcuts(pairs, distances)
+        {
+            var shortcuts = [];
+
+            // The number of shortcuts required
+            var count = pairs.length - 1;
+
+            while(shortcuts.length < count)
+            {
+                var minimum = undefined;
+                var index = undefined;
+
+                for (var i=0; i < pairs.length; i++)
+                {
+                    var edges = pairs[i].edges;
+
+                    var source = edges[0].source;
+                    var destination = edges[1].destination;
+
+                    var distance = distances[source][destination];
+
+                    if (minimum === undefined || distance < minimum)
+                    {
+                        minimum = distance;
+
+                        index = i;
+                    }
+                }
+
+                shortcuts.push(pairs[index]);
+
+                // Remove shortcut found from pairs array
+                pairs.splice(index, 1);
+            }
+
+            return shortcuts;
+        }
+
+        function getEdgePairs(vertex, circuit)
+        {
+            var pairs = [];
+
+            for (var i=0; i < circuit.length; i++)
+            {
+                var edge = circuit[i];
+                var E = [];
+
+                if (edge.destination === vertex)
+                {
+                    E.push(edge);
+
+                    // Look up next edge in circuit (loops back to first edge if on last edge)
+                    edge = (i+1 < circuit.length) ? circuit[i + 1] : circuit[0];
+
+                    if (edge.source === vertex)
+                    {
+                        E.push(edge);
+
+                        pairs.push({
+                            index: i,
+                            edges: E
+                        });
+                    }
+                }
+            }
+
+            return pairs;
+        }
+
+        function getMultiPassesOnVertices(size, circuit)
+        {
+            var V = initializeArrayOfIntegers(size, 0);
+            var vertices = [];
+
+            for (var i=0; i < circuit.length; i++)
+            {
+                V[circuit[i].source]++;
+                V[circuit[i].destination]++;
+            }
+
+            for (var j=0; j < V.length; j++)
+            {
+                if (V[j] > 2)
+                {
+                    vertices.push(j);
+                }
+            }
+
+            return vertices;
+        }
+
         // Find the arc order from the root
         function findEulerianCircuit(root, markedCircuit)
         {
@@ -251,7 +437,7 @@ angular.module('pathFinderDemo', [])
             var vertex = root;
             var EC = [];
 
-            // temporary array holds objects with position and sort-value
+            // Temporary array holds objects with position and sort-value
             var A = markedCircuit.map(function(element, index) {
                 return {
                     index: index,
@@ -274,7 +460,11 @@ angular.module('pathFinderDemo', [])
 
                     var arc = arcs[0];
 
-                    EC.push(arc);
+                    EC.push({
+                        source: arc.source,
+                        destination: arc.destination
+                    });
+
                     vertex = arc.destination;
 
                     removeArc(A, arc.index);
@@ -310,9 +500,9 @@ angular.module('pathFinderDemo', [])
                 {
                     var arc = arcs[j];
 
-                    if (isArcInAntiArborescence(arc, AA))
+                    if (edgeInArray(arc, AA))
                     {
-                        // The highest number for the AA arc
+                        // Give the highest number for the AA arc
                         arc.id = arcs.length;
                     }
                     else
@@ -325,23 +515,6 @@ angular.module('pathFinderDemo', [])
             }
 
             return MC;
-        }
-
-        function isArcInAntiArborescence(arc, AA)
-        {
-            var found = false;
-
-            for (var i=0; i < AA.length; i++)
-            {
-                if (arc.source === AA[i].source &&
-                    arc.destination === AA[i].destination)
-                {
-                    found = true;
-                    break;
-                }
-            }
-
-            return found;
         }
 
         function getOutgoingArcs(circuit, source)
@@ -406,27 +579,54 @@ angular.module('pathFinderDemo', [])
 
         function balanceCircuit(size, circuit)
         {
-            var unbalancedVertex = getUnbalancedVertex(size, circuit);
+            var unbalancedVertices = getUnbalancedVertices(size, circuit);
+            var swappedEdges = []; // List of already swapped edges
 
-            // This could loop indefinitely with an incompatible circuit
-            while(unbalancedVertex.length > 0)
+            while(unbalancedVertices.length > 0)
             {
-                swapEdges(circuit, unbalancedVertex);
+                var edge = swapEdge(circuit, unbalancedVertices);
 
-                unbalancedVertex = getUnbalancedVertex(size, circuit);
+                if (!edgeInArray(edge, swappedEdges))
+                {
+                    swappedEdges.push(edge);
+                    unbalancedVertices = getUnbalancedVertices(size, circuit);
+                }
+                else
+                {
+                    throw "Failure to balance circuit.";
+                }
             }
         }
 
-        function swapEdges(circuit, unbalancedVertex)
+        function edgeInArray(arc, AA)
+        {
+            var found = false;
+
+            for (var i=0; i < AA.length; i++)
+            {
+                if (arc.source === AA[i].source &&
+                    arc.destination === AA[i].destination)
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            return found;
+        }
+
+        function swapEdge(circuit, unbalancedVertices)
         {
             // Prioritize edge swapping
-            var unbalancedEdges = getUnbalancedEdges(circuit, unbalancedVertex);
+            var unbalancedEdges = getUnbalancedEdges(circuit, unbalancedVertices);
             var order = getSwapOrder(unbalancedEdges);
             var edge = circuit[order[0]];
             var source  = edge.source;
 
             edge.source = edge.destination;
             edge.destination = source;
+
+            return edge;
         }
 
         function getSwapOrder(edges)
@@ -448,7 +648,7 @@ angular.module('pathFinderDemo', [])
                 return element.index;
             });
 
-            // Remove edges on balanced vertex
+            // Order only edges on unbalanced vertex
             for (var i= 0; i < result.length; i++)
             {
                 var index = result[i];
@@ -462,13 +662,13 @@ angular.module('pathFinderDemo', [])
             return order;
         }
 
-        function getUnbalancedEdges(circuit, unbalanced)
+        function getUnbalancedEdges(circuit, unbalancedVertices)
         {
-            var edges = initializeIntegerArray(circuit.length, 0);
+            var edges = initializeArrayOfIntegers(circuit.length, 0);
 
-            for (var i=0; i < unbalanced.length; i++)
+            for (var i=0; i < unbalancedVertices.length; i++)
             {
-                var vertex = unbalanced[i];
+                var vertex = unbalancedVertices[i];
                 var index = [];
 
                 if (vertex.diff < 0)
@@ -510,29 +710,29 @@ angular.module('pathFinderDemo', [])
             return index;
         }
 
-        function getUnbalancedVertex(size, cycle)
+        function getUnbalancedVertices(size, cycle)
         {
-            var degree = getInOutDegree(size, cycle);
-            var unbalanced = [];
+            var degree = getDegree(size, cycle);
+            var vertices = [];
 
             for(var i=0; i<size; i++)
             {
                 if (degree[i].in !== degree[i].out)
                 {
-                    unbalanced.push({
+                    vertices.push({
                         id: i,
                         diff: degree[i].in - degree[i].out
                     });
                 }
             }
 
-            return unbalanced;
+            return vertices;
         }
 
-        function getInOutDegree(size, cycle)
+        function getDegree(size, cycle)
         {
-            var outDegree = initializeIntegerArray(size, 0);
-            var inDegree = initializeIntegerArray(size, 0);
+            var outDegree = initializeArrayOfIntegers(size, 0);
+            var inDegree = initializeArrayOfIntegers(size, 0);
 
             for(var i=0; i<cycle.length; i++)
             {
@@ -557,7 +757,7 @@ angular.module('pathFinderDemo', [])
             return inOutDegree;
         }
 
-        function initializeIntegerArray(size, value)
+        function initializeArrayOfIntegers(size, value)
         {
             var a = [];
 

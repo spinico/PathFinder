@@ -109,16 +109,20 @@
             </div>
         </div>
 
-        <div class="ng-hide" ng-show="cycle">
+        <div class="ng-hide" ng-show="BC">
             <h4>Cycle de base:</h4>
-            {{cycle | formatCycle}}
+            {{BC | formatCycle}}
         </div>
 
-        <div class="ng-hide" ng-show="circuit">
-            <h4>Circuit de base:</h4>
-            {{circuit | formatCircuit}}
+        <div class="ng-hide" ng-show="EC">
+            <h4>Circuit eulérien:</h4>
+            {{EC | formatCircuit}}
         </div>
 
+        <div class="ng-hide" ng-show="HC">
+            <h4>Circuit hamiltonien:</h4>
+            {{HC | formatCircuit}}
+        </div>
     </div>
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
