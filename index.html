@@ -10,9 +10,10 @@
 </head>
 <body ng-app="pathFinderDemo">
     <div ng-controller="pathFinderController"
-         ng-init="updateTimeMatrix(data.speed.value)">
+         ng-init="evaluate(data.start)">
         <form novalidate>
             <div>
+<!--
                 <div>
                     <Label class="control-label" for="maximumTime">Temps de parcours (h):</Label>
                     <div style="width: 100px;">
@@ -33,14 +34,13 @@
                                 id="speedSelect"
                                 ng-model="data.speed"
                                 ng-options="option.value for option in data.Speeds track by option.id"
-                                ng-change="updateTimeMatrix(data.speed.value)"
                         >
                         </select>
                     </div>
                 </div>
 
                 <br/>
-
+-->
                 <div>
                     <label for="startSelect">Point de départ :</label>
                     <div style="width: 100px;">
@@ -49,27 +49,26 @@
                                 id="startSelect"
                                 ng-model="data.start"
                                 ng-options="option.value for option in data.Points track by option.id"
+                                ng-change="evaluate(data.start)"
                         >
                         </select>
                     </div>
                 </div>
-
-                <br/>
-
+<!--
                 <div>
                     <input type="submit"
                            class="btn btn-primary"
                            ng-click="evaluate(data.start)"
                            value="Évaluer" />
                 </div>
-
+-->
             </div>
         </form>
         <br>
-        <div style="width:600px; border:1px solid black;">
-            <div style="float:left;" align="center">
+        <div style="width:350px;border:1px solid black;">
+            <div align="center">
                 <h4>Distances (km)</h4>
-                <div class="table-responsive ng-hide" ng-show="matrix">
+                <div class="table-responsive">
                     <table class="table table-striped" style="width: 25%;margin:20px;text-align:center;" >
                         <thead>
                         <tr>
@@ -90,35 +89,14 @@
                 </div>
             </div>
 
-            <div style="">
-                <h4 align="center">Temps de parcours (h)</h4>
-                <div class="table-responsive">
-                    <table class="table table-striped" style="width: 25%;margin:20px;text-align:center;" >
-                        <thead>
-                        <tr>
-                            <th></th>
-                            <th style="text-align: center" ng-repeat="row in matrix track by $index" scope="row">
-                                {{data.Points[$index].value}}
-                            </th>
-                        </thead>
-                        <tbody>
-                        <tr ng-repeat="row in matrix track by $index">
-                            <th style="text-align: center" scope="row">{{data.Points[$index].value}}</th>
-                            <td ng-repeat="elem in row track by $index">
-                                {{elem | number:2}}
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
+        <!--
         <br>
         <h4>Paramètres:</h4>
         <p>Temps maximum = {{data.maxTime}} h</p>
         <p>Vitesse = {{data.speed.value}} km/h</p>
         <p>Point de départ = {{data.start.value}}</p>
-
+-->
         <div class="ng-hide" ng-show="MME">
             <h4>Arbre de distance minimum:</h4>
             <div ng-repeat="edge in MST track by $index">
@@ -131,8 +109,13 @@
             </div>
         </div>
 
+        <div class="ng-hide" ng-show="cycle">
+            <h4>Cycle de base:</h4>
+            {{cycle | formatCycle}}
+        </div>
+
         <div class="ng-hide" ng-show="circuit">
-            <h4>Circuit de base (avec redondance):</h4>
+            <h4>Circuit de base:</h4>
             {{circuit | formatCircuit}}
         </div>
 
