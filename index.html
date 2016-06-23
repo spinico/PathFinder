@@ -13,37 +13,9 @@
          ng-init="evaluate(data.start)">
         <form novalidate>
             <div>
-<!--
                 <div>
-                    <Label class="control-label" for="maximumTime">Temps de parcours (h):</Label>
-                    <div style="width: 100px;">
-                        <input type="text"
-                               id="maximumTime"
-                               class="form-control input-sm"
-                               ng-model="data.maxTime"
-                        />
-                    </div>
-                </div>
-                <br />
-
-                <div>
-                    <label for="speedSelect">Vitesse de déplacement (km/h): </label>
-                    <div style="width: 100px;">
-                        <select name="speedSelect"
-                                class="form-control input-sm"
-                                id="speedSelect"
-                                ng-model="data.speed"
-                                ng-options="option.value for option in data.Speeds track by option.id"
-                        >
-                        </select>
-                    </div>
-                </div>
-
-                <br/>
--->
-                <div>
-                    <label for="startSelect">Point de départ :</label>
-                    <div style="width: 100px;">
+                    <h4 for="startSelect">Point de départ :</h4>
+                    <div style="width: 70px;">
                         <select name="startSelect"
                                 class="form-control input-sm"
                                 id="startSelect"
@@ -64,12 +36,21 @@
 -->
             </div>
         </form>
+
+        <h4>Solutions possibles:</h4>
+        <div style="width:350px;padding:3px;">
+            <b>1.</b> {{HC | formatPointCircuit}}
+            <div ng-repeat="circuit in OPT track by $index">
+                <b>{{$index+2}}.</b> {{circuit | formatPointCircuit}}
+            </div>
+        </div>
+
         <br>
-        <div style="width:350px;border:1px solid black;">
-            <div align="center">
+        <div style="width:400px;border:1px solid black;padding:6px;">
+            <div >
                 <h4>Distances (km)</h4>
                 <div class="table-responsive">
-                    <table class="table table-striped" style="width: 25%;margin:20px;text-align:center;" >
+                    <table class="table table-striped" style="text-align:center;" >
                         <thead>
                         <tr>
                             <th></th>
@@ -89,39 +70,42 @@
                 </div>
             </div>
 
-        </div>
-        <!--
-        <br>
-        <h4>Paramètres:</h4>
-        <p>Temps maximum = {{data.maxTime}} h</p>
-        <p>Vitesse = {{data.speed.value}} km/h</p>
-        <p>Point de départ = {{data.start.value}}</p>
--->
-        <div class="ng-hide" ng-show="MME">
-            <h4>Arbre de distance minimum:</h4>
-            <div ng-repeat="edge in MST track by $index">
-                {{edge | formatEdge}}
+            <div class="ng-hide" ng-show="MST">
+                <h4>Arbre de distance minimum:</h4>
+                <div ng-repeat="edge in MST track by $index">
+                    {{edge | formatEdge}}
+                </div>
             </div>
 
-            <h4>Couplage de coût minimum:</h4>
-            <div ng-repeat="edge in MME track by $index">
-                {{edge | formatEdge}}
+            <div class="ng-hide" ng-show="MME">
+                <h4>Couplage de coût minimum:</h4>
+                <div ng-repeat="edge in MME track by $index">
+                    {{edge | formatEdge}}
+                </div>
             </div>
-        </div>
 
-        <div class="ng-hide" ng-show="BC">
-            <h4>Cycle de base:</h4>
-            {{BC | formatCycle}}
-        </div>
+            <div class="ng-hide" ng-show="BC">
+                <h4>Cycle de base:</h4>
+                {{BC | formatCycle}}
+            </div>
 
-        <div class="ng-hide" ng-show="EC">
-            <h4>Circuit eulérien:</h4>
-            {{EC | formatCircuit}}
-        </div>
+            <div class="ng-hide" ng-show="EC">
+                <h4>Circuit eulérien:</h4>
+                {{EC | formatEdgeCircuit}}
+            </div>
 
-        <div class="ng-hide" ng-show="HC">
-            <h4>Circuit hamiltonien:</h4>
-            {{HC | formatCircuit}}
+            <div class="ng-hide" ng-show="HC">
+                <h4>Circuit hamiltonien:</h4>
+                {{HC | formatEdgeCircuit}}
+            </div>
+
+            <div class="ng-hide" ng-show="OPT">
+                <h4>Optimisation (2-OPT):</h4>
+                <div ng-repeat="circuit in OPT track by $index">
+                    {{circuit | formatEdgeCircuit}}
+                </div>
+            </div>
+
         </div>
     </div>
 
