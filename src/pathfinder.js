@@ -2,8 +2,6 @@
 
 angular.module('pathFinderDemo', [])
     .value('data', {
-        maxTime: 4,
-
         Distances:[
             [ 0, 7, 4,10,10],
             [ 7, 0, 6, 7, 1],
@@ -12,12 +10,6 @@ angular.module('pathFinderDemo', [])
             [10, 1, 2, 6, 0]
         ],
 
-        Speeds: [
-            {id: '0', value: '3'},
-            {id: '1', value: '5'}
-        ],
-        speed: {id:'0', value: '3'},
-
         Points: [
             {id: '0', value: 'A'},
             {id: '1', value: 'B'},
@@ -25,7 +17,7 @@ angular.module('pathFinderDemo', [])
             {id: '3', value: 'D'},
             {id: '4', value: 'E'}
         ],
-        start: {id:'4', value: 'E'}
+        start: {id:'1', value: 'B'}
     })
     .controller('pathFinderController', ['$scope', 'data', 'pathFinderService',
         function($scope, data, pathFinderService) {
@@ -42,7 +34,9 @@ angular.module('pathFinderDemo', [])
 
         $scope.evaluate = function(start)
         {
-            $scope.MST = pathFinder.getMinimumSpanningTree(start.id, $scope.data.Distances);
+            var root = Number(start.id);
+
+            $scope.MST = pathFinder.getMinimumSpanningTree(root, $scope.data.Distances);
 
             $scope.ODV = pathFinder.getOddDegreeVertex($scope.data.Points, $scope.MST);
 
@@ -50,9 +44,11 @@ angular.module('pathFinderDemo', [])
 
             $scope.BC = pathFinder.getBaseCycle($scope.MST, $scope.MME);
 
-            $scope.EC = pathFinder.getEulerianCircuit($scope.data.Points, start.id, $scope.BC);
+            $scope.EC = pathFinder.getEulerianCircuit($scope.data.Points, root, $scope.BC);
 
-            $scope.HC = pathFinder.getHamiltonianCircuit($scope.data.Points, start.id, $scope.EC, $scope.data.Distances);
+            $scope.HC = pathFinder.getHamiltonianCircuit($scope.data.Points, root, $scope.EC, $scope.data.Distances);
+
+            $scope.OPT = pathFinder.getOptimizedCircuits($scope.HC, $scope.data.Distances);
         };
 
     }])
@@ -74,11 +70,10 @@ angular.module('pathFinderDemo', [])
             return matrix;
         };
 
-        PathFinder.getMinimumSpanningTree = function(start, distances)
+        PathFinder.getMinimumSpanningTree = function(root, distances)
         {
             var A = [];
             var MST = [];
-            var root = Number(start);
 
             // Default start point (arbitrary)
             A.push(root);
@@ -221,10 +216,9 @@ angular.module('pathFinderDemo', [])
             return cycle;
         };
 
-        PathFinder.getEulerianCircuit = function(points, start, cycle)
+        PathFinder.getEulerianCircuit = function(points, root, cycle)
         {
             var size = points.length;
-            var root = Number(start);
             var circuit = copyEdges(cycle);
 
             // Each vertex must have an equal number of
@@ -241,7 +235,7 @@ angular.module('pathFinderDemo', [])
             return findEulerianCircuit(root, markedCircuit);
         };
 
-        PathFinder.getHamiltonianCircuit = function(points, start, circuit, distances)
+        PathFinder.getHamiltonianCircuit = function(points, root, circuit, distances)
         {
             var size = points.length;
 
@@ -259,12 +253,161 @@ angular.module('pathFinderDemo', [])
                 updateCircuit(shortcuts, HC);
             }
 
-            return orderFromStartPoint(start, HC);
+            return orderFromStartPoint(root, HC);
         };
 
-        function orderFromStartPoint(start, circuit)
+        PathFinder.getOptimizedCircuits = function(circuit, distances)
         {
-            var root = Number(start);
+            var OC = copyEdges(circuit);
+            var OPT = [];
+            var index = 0;
+
+            // 2-opt post optimization
+            while(index < OC.length)
+            {
+                var current = {
+                    index: index,
+                    source: OC[index].source,
+                    destination: OC[index].destination
+                };
+
+                var candidates = getEdgeCandidates(current, OC);
+
+                var diff = optimize(current, candidates, distances, OC);
+
+                if (diff < 0)
+                {
+                    // Save this circuit
+                    OPT.push(OC);
+
+                    // Restart
+                    index = 0;
+                }
+                else
+                {
+                    index++;
+                }
+            }
+
+            return OPT;
+        };
+
+        //function reorder(OC)
+        //{
+        //    var current, next, previous;
+        //
+        //    for (var i=0; i < OC.length; i++)
+        //    {
+        //        current = OC[i];
+        //
+        //        previous = i-1 >= 0 ? OC[i-1] : OC[OC.length-1];
+        //        next = i+1 < OC.length ? OC[i+1] : OC[0];
+        //
+        //        // Conditions to reverse
+        //        if (current.source === next.source &&
+        //            current.destination === previous.destination)
+        //        {
+        //            // Flip edge orientation
+        //            current.source = previous.destination;
+        //            current.destination = next.source;
+        //        }
+        //    }
+        //}
+
+        function optimize(current, candidates, distances, OC)
+        {
+            var diff = 0;
+
+            for (var i=0; i < candidates.length; i++)
+            {
+                var edge = candidates[i].edge;
+                var oldWeight = distances[current.source][current.destination] +
+                                distances[edge.source][edge.destination];
+
+                // Exchange vertex
+                var newWeight = distances[current.source][edge.source] +
+                                distances[current.destination][edge.destination];
+
+                if (newWeight - oldWeight < 0)
+                {
+                    // Found a better circuit, replace edges
+                    diff = newWeight - oldWeight;
+
+                    // Add first edge (shift previous edge to next index)
+                    OC.splice(candidates[i].index, 0, {
+                        source: current.destination,
+                        destination: edge.destination
+                    });
+
+                    // Remove previous edge
+                    OC.splice(candidates[i].index + 1, 1);
+
+                    // Add second edge (shift previous edge to next index)
+                    OC.splice(current.index, 0, {
+                        source: current.source,
+                        destination: edge.source
+                    });
+
+                    // Remove previous edge
+                    OC.splice(current.index + 1, 1);
+
+                    // Every edges in between must be reversed
+                    reverseEdgeRange(current.index, candidates[i].index, OC);
+
+                    break;
+                }
+            }
+
+            return diff;
+        }
+
+        function reverseEdgeRange(from, to, OC)
+        {
+            var edges = [];
+
+            // A deep copy is needed for this to work
+            for (var i=from+1; i < to; i++)
+            {
+                edges.push({
+                    source: OC[i].source,
+                    destination: OC[i].destination
+                });
+            }
+
+            for (var j=to-1, k=0; j > from; j--, k++)
+            {
+                OC[j].source = edges[k].destination;
+                OC[j].destination = edges[k].source;
+            }
+        }
+
+        function getEdgeCandidates(current, circuit)
+        {
+            var candidates = [];
+
+            for (var i=0; i < circuit.length; i++)
+            {
+                var edge = circuit[i];
+
+                // A valid candidate edge must not be linked
+                // to the current edge
+                if (current.source !== edge.source &&
+                    current.source !== edge.destination &&
+                    current.destination !== edge.source &&
+                    current.destination !== edge.destination)
+                {
+                    candidates.push({
+                        index: i,
+                        edge:edge
+                    });
+                }
+            }
+
+            return candidates;
+        }
+
+        function orderFromStartPoint(root, circuit)
+        {
             var preEdges = [];
             var postEdges = [];
             var found = false;
@@ -812,9 +955,9 @@ angular.module('pathFinderDemo', [])
 
         return formatCycleFilter;
     }])
-    .filter('formatCircuit', ['data', function(data){
+    .filter('formatEdgeCircuit', ['data', function(data){
 
-        function formatCircuitFilter(input)
+        function formatEdgeCircuitFilter(input)
         {
             var formatedText = "";
             var totalDistance = 0;
@@ -839,5 +982,29 @@ angular.module('pathFinderDemo', [])
             return formatedText + " (" + totalDistance + " km)";
         }
 
-        return formatCircuitFilter;
+        return formatEdgeCircuitFilter;
+    }])
+    .filter('formatPointCircuit', ['data', function(data){
+
+        function formatPointCircuitFilter(input)
+        {
+            var formatedText = "";
+            var totalDistance = 0;
+
+            if (input != null)
+            {
+                for(var i =0; i < input.length; i++)
+                {
+                    var edge = input[i];
+
+                    totalDistance += data.Distances[edge.source][edge.destination];
+
+                    formatedText += i < input.length-1 ? data.Points[edge.source].value + " -> " :
+                    data.Points[edge.source].value + " -> " + data.Points[edge.destination].value;
+                }
+            }
+            return formatedText + " (" + totalDistance + " km)";
+        }
+
+        return formatPointCircuitFilter;
     }]);
