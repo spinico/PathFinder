@@ -165,13 +165,7 @@ angular.module('pathFinderDemo', [])
 
             return MME;
         };
-
-
-        function findMatchingEdge(ODV, MME, distances)
-        {
-
-        }
-
+        
         function getOddDegreeVertex(points, MST)
         {
             var ODV = [];
