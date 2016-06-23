@@ -292,28 +292,6 @@ angular.module('pathFinderDemo', [])
             return OPT;
         };
 
-        //function reorder(OC)
-        //{
-        //    var current, next, previous;
-        //
-        //    for (var i=0; i < OC.length; i++)
-        //    {
-        //        current = OC[i];
-        //
-        //        previous = i-1 >= 0 ? OC[i-1] : OC[OC.length-1];
-        //        next = i+1 < OC.length ? OC[i+1] : OC[0];
-        //
-        //        // Conditions to reverse
-        //        if (current.source === next.source &&
-        //            current.destination === previous.destination)
-        //        {
-        //            // Flip edge orientation
-        //            current.source = previous.destination;
-        //            current.destination = next.source;
-        //        }
-        //    }
-        //}
-
         function optimize(current, candidates, distances, OC)
         {
             var diff = 0;
