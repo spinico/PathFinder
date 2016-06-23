@@ -24,11 +24,11 @@ angular.module('pathFinderDemo', [])
 
         $scope.data = data;
         $scope.MST = null; // Minimum spanning tree
-        $scope.ODV = null; // Odd Degree Vertex
         $scope.MME = null; // Minimum Matching Edges
         $scope.BC = null; // Basic cycle
         $scope.EC = null; // Eulerian circuit (passing on each edges once)
         $scope.HC = null; // Hamiltonian circuit (passing on each vertices once)
+        $scope.OPT = null; // Optimized circuits variant
 
         var pathFinder = pathFinderService;
 
@@ -38,9 +38,7 @@ angular.module('pathFinderDemo', [])
 
             $scope.MST = pathFinder.getMinimumSpanningTree(root, $scope.data.Distances);
 
-            $scope.ODV = pathFinder.getOddDegreeVertex($scope.data.Points, $scope.MST);
-
-            $scope.MME = pathFinder.getMinimumMatchingEdges($scope.ODV, $scope.data.Distances);
+            $scope.MME = pathFinder.getMinimumMatchingEdges($scope.data.Points, $scope.MST, $scope.data.Distances);
 
             $scope.BC = pathFinder.getBaseCycle($scope.MST, $scope.MME);
 
@@ -127,42 +125,12 @@ angular.module('pathFinderDemo', [])
             return edge;
         }
 
-        PathFinder.getOddDegreeVertex = function(points, MST)
-        {
-            var ODV = [];
-            var size = points.length;
-
-            var degree = getVertexDegree(size, MST);
-
-            for(var i = 0; i < degree.length; i++)
-            {
-                // Finding odd degree vertex
-                if (degree[i] % 2)
-                {
-                    ODV.push(i);
-                }
-            }
-
-            return ODV;
-        };
-
-        function getVertexDegree(size, MST)
-        {
-            var degree = initializeArrayOfIntegers(size, 0);
-
-            for(var j = 0; j < MST.length; j++)
-            {
-                degree[MST[j].source]++;
-                degree[MST[j].destination]++;
-            }
-
-            return degree;
-        }
-
-        PathFinder.getMinimumMatchingEdges = function(ODV, matrix)
+        PathFinder.getMinimumMatchingEdges = function(points, MST, distances)
         {
             var MME = [];
             var V = []; // List of already processed vertex
+
+            var ODV = getOddDegreeVertex(points, MST);
 
             for (var i = 0; i < ODV.length; i++)
             {
@@ -173,12 +141,12 @@ angular.module('pathFinderDemo', [])
                 for (var j = 0; j < ODV.length; j++)
                 {
                     // Do not process the same odd degree vertex
-                    if (V.indexOf(i) === -1 && V.indexOf(j) === -1 && i !== j)
+                    if (V.indexOf(source) === -1 && V.indexOf(j) === -1 && i !== j)
                     {
-                        if (minimum === -1 || matrix[source][ODV[j]] < minimum)
+                        if (minimum === -1 || distances[source][ODV[j]] < minimum)
                         {
                             destination = ODV[j];
-                            minimum = matrix[source][destination];
+                            minimum = distances[source][destination];
                         }
                     }
                 }
@@ -197,6 +165,44 @@ angular.module('pathFinderDemo', [])
 
             return MME;
         };
+
+
+        function findMatchingEdge(ODV, MME, distances)
+        {
+
+        }
+
+        function getOddDegreeVertex(points, MST)
+        {
+            var ODV = [];
+            var size = points.length;
+
+            var degree = getVertexDegree(size, MST);
+
+            for(var i = 0; i < degree.length; i++)
+            {
+                // Finding odd degree vertex
+                if (degree[i] % 2)
+                {
+                    ODV.push(i);
+                }
+            }
+
+            return ODV;
+        }
+
+        function getVertexDegree(size, MST)
+        {
+            var degree = initializeArrayOfIntegers(size, 0);
+
+            for(var j = 0; j < MST.length; j++)
+            {
+                degree[MST[j].source]++;
+                degree[MST[j].destination]++;
+            }
+
+            return degree;
+        }
 
         PathFinder.getBaseCycle = function(MST, MME)
         {
