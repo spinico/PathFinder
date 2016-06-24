@@ -1,23 +1,49 @@
 /* global angular */
 
 angular.module('pathFinderDemo', [])
+    //.value('data', {
+    //    Distances:[
+    //        [ 0, 7, 4,10,10],
+    //        [ 7, 0, 6, 7, 1],
+    //        [ 4, 6, 0,16, 2],
+    //        [10, 7, 16,0, 6],
+    //        [10, 1, 2, 6, 0]
+    //    ],
+    //
+    //    Points: [
+    //        {id: '0', value: 'A'},
+    //        {id: '1', value: 'B'},
+    //        {id: '2', value: 'C'},
+    //        {id: '3', value: 'D'},
+    //        {id: '4', value: 'E'}
+    //    ],
+    //    start: {id:'1', value: 'B'}
+    //})
     .value('data', {
         Distances:[
-            [ 0, 7, 4,10,10],
-            [ 7, 0, 6, 7, 1],
-            [ 4, 6, 0,16, 2],
-            [10, 7, 16,0, 6],
-            [10, 1, 2, 6, 0]
+            [ 0, 0.098, 0.34,0.454,0.291, 0.104, 0.464, 0.293, 0.089],
+            [ 0.098, 0, 0.75, 0.5, 0.24, 0.55, 0.45, 0.4, 0.5],
+            [ 0.34, 0.75, 0, 0.29, 0.55, 0.27, 0.7, 0.35, 0.3],
+            [0.454, 0.5, 0.29, 0, 0.35, 0.17, 0.55, 0.2, 0.14],
+            [0.291, 0.24, 0.55, 0.35, 0, 0.4, 0.35, 0.19, 0.25],
+            [0.104, 0.55, 0.27, 0.17, 0.4, 0, 0.75, 0.4, 0.3],
+            [0.464, 0.45, 0.7, 0.55, 0.35, 0.75, 0, 0.35, 0.45 ],
+            [0.293, 0.4, 0.35, 0.2, 0.19, 0.4, 0.35, 0, 0.061],
+            [0.089, 0.5, 0.3, 0.14, 0.25, 0.3, 0.45, 0.061, 0]
         ],
 
         Points: [
-            {id: '0', value: 'A'},
-            {id: '1', value: 'B'},
-            {id: '2', value: 'C'},
-            {id: '3', value: 'D'},
-            {id: '4', value: 'E'}
+            {id: '0', value: 'A'}, //575 St-Charles
+            {id: '1', value: 'B'}, //595 Marie-Victorin
+            {id: '2', value: 'C'}, //46 Pierre-Boucher
+            {id: '3', value: 'D'}, //10 de Grandpre
+            {id: '4', value: 'E'},  //7 La Perriere N
+            {id: '5', value: 'F'},  //510 Marie-Victorin
+            {id: '6', value: 'G'},  //62 de Montbrun
+            {id: '7', value: 'H'},  //554 Saint-Charles
+            {id: '8', value: 'I'}  //542 Saint-Charles
         ],
-        start: {id:'1', value: 'B'}
+        start: {id:'2', value: 'C'}
     })
     .controller('pathFinderController', ['$scope', 'data', 'pathFinderService',
         function($scope, data, pathFinderService) {
@@ -165,7 +191,7 @@ angular.module('pathFinderDemo', [])
 
             return MME;
         };
-        
+
         function getOddDegreeVertex(points, MST)
         {
             var ODV = [];
@@ -277,11 +303,14 @@ angular.module('pathFinderDemo', [])
 
                 if (diff < 0)
                 {
-                    // Save this circuit
-                    OPT.push(OC);
+                    // Save this circuit if not already in list
+                    if (!circuitExists(OPT, OC))
+                    {
+                        OPT.push(OC);
 
-                    // Restart
-                    index = 0;
+                        // Restart
+                        index = 0;
+                    }
                 }
                 else
                 {
@@ -291,6 +320,38 @@ angular.module('pathFinderDemo', [])
 
             return OPT;
         };
+
+        function circuitExists(OPT, OC)
+        {
+            var isUnique = true;
+
+            // Test for circuit existence
+            for (var i=0; i < OPT.length; i++)
+            {
+                var circuit = OPT[i];
+
+                // Hypothesis: the circuit is not unique
+                isUnique = false;
+
+                for (var j=0; j < OC.length; j++)
+                {
+                    // Looking for a single difference
+                    if (OC[j] !== circuit[j])
+                    {
+                        isUnique = true;
+                        break;
+                    }
+                }
+
+                // End lookup when an exact circuit
+                // match is found
+                if (!isUnique) break;
+            }
+
+            // If unique, the circuit does not
+            // already exists (inverse logic)
+            return !isUnique;
+        }
 
         function optimize(current, candidates, distances, OC)
         {
@@ -447,7 +508,7 @@ angular.module('pathFinderDemo', [])
 
                     // Remove first and last edges
                     circuit.splice(0, 1);
-                    circuit.splice(0, circuit.length - 1);
+                    circuit.splice(circuit.length - 1, 1);
                 }
                 else
                 {
@@ -455,7 +516,7 @@ angular.module('pathFinderDemo', [])
                     circuit.splice(index,0, edge);
 
                     // Remove the following 2 edges
-                    circuit.splice(index+1, 2);
+                    circuit.splice(index + 1, 2);
                 }
             }
         }
@@ -705,18 +766,36 @@ angular.module('pathFinderDemo', [])
 
             while(unbalancedVertices.length > 0)
             {
-                var edge = swapEdge(circuit, unbalancedVertices);
+                var edge = swapEdge(circuit, unbalancedVertices, swappedEdges);
 
-                if (!edgeInArray(edge, swappedEdges))
-                {
-                    swappedEdges.push(edge);
-                    unbalancedVertices = getUnbalancedVertices(size, circuit);
-                }
-                else
+                swappedEdges.push(edge);
+                unbalancedVertices = getUnbalancedVertices(size, circuit);
+            }
+        }
+
+        function swapEdge(circuit, unbalancedVertices, swappedEdges)
+        {
+            // Prioritize edge swapping
+            var unbalancedEdges = getUnbalancedEdges(circuit, unbalancedVertices);
+            var order = getSwapOrder(unbalancedEdges);
+            var edge = circuit[order[0]];
+            var source  = edge.source;
+            var count = 1;
+
+            while(edgeInArray(edge, swappedEdges))
+            {
+                edge = circuit[order[count]];
+
+                if (++count ===  order.length)
                 {
                     throw "Failure to balance circuit.";
                 }
             }
+
+            edge.source = edge.destination;
+            edge.destination = source;
+
+            return edge;
         }
 
         function edgeInArray(arc, AA)
@@ -734,20 +813,6 @@ angular.module('pathFinderDemo', [])
             }
 
             return found;
-        }
-
-        function swapEdge(circuit, unbalancedVertices)
-        {
-            // Prioritize edge swapping
-            var unbalancedEdges = getUnbalancedEdges(circuit, unbalancedVertices);
-            var order = getSwapOrder(unbalancedEdges);
-            var edge = circuit[order[0]];
-            var source  = edge.source;
-
-            edge.source = edge.destination;
-            edge.destination = source;
-
-            return edge;
         }
 
         function getSwapOrder(edges)
@@ -909,15 +974,12 @@ angular.module('pathFinderDemo', [])
         function formatCycleFilter(input)
         {
             var formatedText = "";
-            var totalDistance = 0;
 
             if (input != null)
             {
                 for(var i =0; i < input.length; i++)
                 {
                     var edge = input[i];
-
-                    totalDistance += data.Distances[edge.source][edge.destination];
 
                     formatedText += "[" + data.Points[edge.source].value + "," +
                         data.Points[edge.destination].value + "]";
@@ -928,7 +990,7 @@ angular.module('pathFinderDemo', [])
                     }
                 }
             }
-            return formatedText + " (" + totalDistance + " km)";
+            return formatedText;
         }
 
         return formatCycleFilter;
@@ -957,7 +1019,7 @@ angular.module('pathFinderDemo', [])
                     }
                 }
             }
-            return formatedText + " (" + totalDistance + " km)";
+            return formatedText + " (" + totalDistance.toFixed(3) + " km)";
         }
 
         return formatEdgeCircuitFilter;
@@ -981,7 +1043,7 @@ angular.module('pathFinderDemo', [])
                     data.Points[edge.source].value + " -> " + data.Points[edge.destination].value;
                 }
             }
-            return formatedText + " (" + totalDistance + " km)";
+            return formatedText + " (" + totalDistance.toFixed(3) + " km)";
         }
 
         return formatPointCircuitFilter;
