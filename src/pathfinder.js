@@ -1,50 +1,6 @@
 /* global angular */
 
 angular.module('pathFinderDemo', [])
-    //.value('data', {
-    //    Distances:[
-    //        [ 0, 7, 4,10,10],
-    //        [ 7, 0, 6, 7, 1],
-    //        [ 4, 6, 0,16, 2],
-    //        [10, 7, 16,0, 6],
-    //        [10, 1, 2, 6, 0]
-    //    ],
-    //
-    //    Points: [
-    //        {id: '0', value: 'A'},
-    //        {id: '1', value: 'B'},
-    //        {id: '2', value: 'C'},
-    //        {id: '3', value: 'D'},
-    //        {id: '4', value: 'E'}
-    //    ],
-    //    start: {id:'1', value: 'B'}
-    //})
-    .value('data', {
-        Distances:[
-            [ 0, 0.098, 0.34,0.454,0.291, 0.104, 0.464, 0.293, 0.089],
-            [ 0.098, 0, 0.75, 0.5, 0.24, 0.55, 0.45, 0.4, 0.5],
-            [ 0.34, 0.75, 0, 0.29, 0.55, 0.27, 0.7, 0.35, 0.3],
-            [0.454, 0.5, 0.29, 0, 0.35, 0.17, 0.55, 0.2, 0.14],
-            [0.291, 0.24, 0.55, 0.35, 0, 0.4, 0.35, 0.19, 0.25],
-            [0.104, 0.55, 0.27, 0.17, 0.4, 0, 0.75, 0.4, 0.3],
-            [0.464, 0.45, 0.7, 0.55, 0.35, 0.75, 0, 0.35, 0.45 ],
-            [0.293, 0.4, 0.35, 0.2, 0.19, 0.4, 0.35, 0, 0.061],
-            [0.089, 0.5, 0.3, 0.14, 0.25, 0.3, 0.45, 0.061, 0]
-        ],
-
-        Points: [
-            {id: '0', value: 'A'}, //575 St-Charles
-            {id: '1', value: 'B'}, //595 Marie-Victorin
-            {id: '2', value: 'C'}, //46 Pierre-Boucher
-            {id: '3', value: 'D'}, //10 de Grandpre
-            {id: '4', value: 'E'},  //7 La Perriere N
-            {id: '5', value: 'F'},  //510 Marie-Victorin
-            {id: '6', value: 'G'},  //62 de Montbrun
-            {id: '7', value: 'H'},  //554 Saint-Charles
-            {id: '8', value: 'I'}  //542 Saint-Charles
-        ],
-        start: {id:'2', value: 'C'}
-    })
     .controller('pathFinderController', ['$scope', 'data', 'pathFinderService',
         function($scope, data, pathFinderService) {
 
@@ -132,7 +88,7 @@ angular.module('pathFinderDemo', [])
                 for(var j=0; j < distances.length; j++)
                 {
                     // No cycle condition
-                    if (A.indexOf(j) === -1 && source != j)
+                    if (!vertexInArray(j, A) && source != j)
                     {
                         // Update on a new minimum distance
                         if (minimum === -1 || distances[source][j] < minimum)
@@ -166,8 +122,9 @@ angular.module('pathFinderDemo', [])
 
                 for (var j = 0; j < ODV.length; j++)
                 {
-                    // Do not process the same odd degree vertex
-                    if (V.indexOf(source) === -1 && V.indexOf(j) === -1 && i !== j)
+                    // Do not process the same odd degree vertices
+                    if (!vertexInArray(source, V) &&
+                        !vertexInArray(j, V) && i !== j)
                     {
                         if (minimum === -1 || distances[source][ODV[j]] < minimum)
                         {
@@ -612,7 +569,13 @@ angular.module('pathFinderDemo', [])
             return vertices;
         }
 
-        // Find the arc order from the root
+        /**
+         * Find the arc order from the root that form
+         * an eulerian circuit
+         * @param root
+         * @param markedCircuit
+         * @returns {Array}
+         */
         function findEulerianCircuit(root, markedCircuit)
         {
             var total = markedCircuit.length;
@@ -656,6 +619,11 @@ angular.module('pathFinderDemo', [])
             return EC;
         }
 
+        /**
+         * Remove arc at given index in array
+         * @param A
+         * @param index
+         */
         function removeArc(A, index)
         {
             // Lookup the actual array index
@@ -682,7 +650,7 @@ angular.module('pathFinderDemo', [])
                 {
                     var arc = arcs[j];
 
-                    if (edgeInArray(arc, AA))
+                    if (arcInArray(arc, AA))
                     {
                         // Give the highest number for the AA arc
                         arc.id = arcs.length;
@@ -738,7 +706,7 @@ angular.module('pathFinderDemo', [])
                         source = circuit[j].source;
 
                         // Loop guard condition
-                        if (V.indexOf(source) === -1)
+                        if (!vertexInArray(source, V))
                         {
                             V.push(source);
 
@@ -762,50 +730,260 @@ angular.module('pathFinderDemo', [])
         function balanceCircuit(size, circuit)
         {
             var unbalancedVertices = getUnbalancedVertices(size, circuit);
-            var swappedEdges = []; // List of already swapped edges
+            var neighbors = [];
+            var paths = [];
 
             while(unbalancedVertices.length > 0)
             {
-                var edge = swapEdge(circuit, unbalancedVertices, swappedEdges);
+                var path = [];
 
-                swappedEdges.push(edge);
+                // A change of one or more arc could be made
+                var found = false;
+
+                // First, look around each unbalanced vertices
+                var unbalancedNeighbor = getUnbalancedNeighbor(unbalancedVertices, circuit);
+                if (unbalancedNeighbor !== null)
+                {
+                    // Guard against modification to an already changed neighbor
+                    if (!vertexInArray(unbalancedNeighbor.vertex, neighbors))
+                    {
+                        neighbors.push(unbalancedNeighbor.vertex);
+
+                        var arc = circuit[unbalancedNeighbor.index];
+
+                        swapArc(arc);
+
+                        found = true;
+                    }
+                }
+
+                if (found === false)
+                {
+                    // Look for a path to another unbalanced vertex
+                    for (var i=0; i < unbalancedVertices.length; i++)
+                    {
+                        var vertex = unbalancedVertices[i];
+
+                        var V = [];
+                        V.push(vertex);
+
+                        // Remove initial vertex from possible destinations to avoid infinite loop
+                        var vertices = excludeFromArray(vertex, unbalancedVertices);
+
+                        found = findPathTo(vertices, V, circuit, path);
+
+                        if (found)
+                        {
+                            // Guard against modification to an already changed path
+                            if (!pathInArray(path, paths))
+                            {
+                                paths.push(path);
+
+                                // Swap the path
+                                swapPath(circuit, path);
+
+                                break;
+                            }
+                        }
+                        else if (i === unbalancedVertices.length - 1)
+                        {
+                            throw "Unable to balance circuit: no path between unbalanced vertices could be found.";
+                        }
+                    }
+                }
+
                 unbalancedVertices = getUnbalancedVertices(size, circuit);
             }
         }
 
-        function swapEdge(circuit, unbalancedVertices, swappedEdges)
+        function swapPath(circuit, path)
         {
-            // Prioritize edge swapping
-            var unbalancedEdges = getUnbalancedEdges(circuit, unbalancedVertices);
-            var order = getSwapOrder(unbalancedEdges);
-            var edge = circuit[order[0]];
-            var source  = edge.source;
-            var count = 1;
+            var arc, index;
 
-            while(edgeInArray(edge, swappedEdges))
+            for (var i=0; i < path.length; i++)
             {
-                edge = circuit[order[count]];
+                index = path[i].index;
 
-                if (++count ===  order.length)
+                arc = circuit[index];
+
+                swapArc(arc);
+            }
+        }
+
+        function swapArc(arc)
+        {
+            var source = arc.source;
+
+            arc.source = arc.destination;
+            arc.destination = source;
+        }
+
+        function getUnbalancedNeighbor(unbalancedVertices, circuit)
+        {
+            for (var i=0; i < unbalancedVertices.length; i++)
+            {
+                var vertex = unbalancedVertices[i];
+
+                var neighbours = getVertexNeighbours(vertex, circuit);
+
+                for (var j=0; j < neighbours.length; j++)
                 {
-                    throw "Failure to balance circuit.";
+                    var neighbor = neighbours[j];
+
+                    if (vertexInArray(neighbor.vertex, unbalancedVertices))
+                    {
+                        return neighbor;
+                    }
                 }
             }
 
-            edge.source = edge.destination;
-            edge.destination = source;
-
-            return edge;
+            return null;
         }
 
-        function edgeInArray(arc, AA)
+        function getVertexNeighbours(vertex, circuit)
+        {
+            var neighbours = [];
+            var source, destination;
+
+            // Guard array to avoid inserting multiple reference to same neighbor
+            var V = [];
+
+            for(var i=0; i < circuit.length; i++)
+            {
+                if (circuit[i].source === vertex)
+                {
+                    destination = circuit[i].destination;
+
+                    if (!vertexInArray(destination, V))
+                    {
+                        V.push(destination);
+
+                        neighbours.push({
+                            index: i,
+                            vertex: destination
+                        });
+                    }
+                }
+                else if (circuit[i].destination === vertex)
+                {
+                    source = circuit[i].source;
+
+                    if (!vertexInArray(source, V))
+                    {
+                        V.push(source);
+
+                        neighbours.push({
+                            index: i,
+                            vertex: source
+                        });
+                    }
+                }
+            }
+
+            return neighbours;
+        }
+
+        function findPathTo(vertices, V, circuit, path)
+        {
+            // Look recursively for the destination vertex by following
+            // out arcs without going back to a previously visited vertex
+
+            // Current vertex is the last one added
+            var current = V[V.length - 1];
+
+            var outArcs = getOutArcs(current, circuit);
+
+            var destinations = getDestinations(outArcs);
+
+            var found = false;
+
+            for (var i=0; i < destinations.length; i++)
+            {
+                var vertex = destinations[i].vertex;
+                var arc = destinations[i].arc;
+
+                if (vertexInArray(vertex, vertices))
+                {
+                    // Found an unbalanced vertex add final arc to path
+                    path.push(arc);
+
+                    found = true;
+                }
+                else
+                {
+                    // Loop guard condition
+                    if (!vertexInArray(vertex, V))
+                    {
+                        V.push(vertex);
+
+                        path.push(arc);
+
+                        // Recursive call
+                        found = findPathTo(vertices, V, circuit, path);
+                    }
+                }
+
+                if (found) break;
+            }
+
+            return found;
+        }
+
+        function getDestinations(arcs)
+        {
+            var D = [];
+            var arc;
+
+            for (var i=0; i < arcs.length; i++)
+            {
+                arc = arcs[i];
+
+                D.push({
+                    arc: arc,
+                    vertex: arcs[i].destination
+                });
+            }
+
+            return D;
+        }
+
+        function getOutArcs(vertex, circuit)
+        {
+            var A = [];
+
+            for (var i=0; i < circuit.length; i++)
+            {
+                var arc = circuit[i];
+
+                if (arc.source === vertex)
+                {
+                    if (!arcInArray(arc, A))
+                    {
+                        A.push({
+                            index: i,
+                            source: arc.source,
+                            destination: arc.destination
+                        });
+                    }
+                }
+            }
+
+            return A;
+        }
+
+        function vertexInArray(vertex, V)
+        {
+            return V.indexOf(vertex) !== -1;
+        }
+
+        function arcInArray(arc, A)
         {
             var found = false;
 
-            for (var i=0; i < AA.length; i++)
+            for (var i=0; i < A.length; i++)
             {
-                if (arc.source === AA[i].source &&
-                    arc.destination === AA[i].destination)
+                if (arc.source === A[i].source &&
+                    arc.destination === A[i].destination)
                 {
                     found = true;
                     break;
@@ -815,85 +993,60 @@ angular.module('pathFinderDemo', [])
             return found;
         }
 
-        function getSwapOrder(edges)
+        function pathInArray(path, P)
         {
-            var order = [];
+            var found;
+            var arc;
 
-            // temporary array holds objects with position and sort-value
-            var mapped = edges.map(function(element, index) {
-                return { index: index, value: element };
-            });
-
-            // descending sort the mapped array containing the reduced values
-            mapped.sort(function(a, b) {
-                return b.value - a.value;
-            });
-
-            // container for the resulting order
-            var result = mapped.map(function(element){
-                return element.index;
-            });
-
-            // Order only edges on unbalanced vertex
-            for (var i= 0; i < result.length; i++)
+            for (var i=0; i < P.length; i++)
             {
-                var index = result[i];
+                found = true;
 
-                if(edges[index] > 0)
+                for (var j=0; j < P[i].length; j++)
                 {
-                    order.push(index);
+                    arc = P[i][j];
+
+                    if (arc.source !== path[j].source ||
+                        arc.destination !== path[j].destination)
+                    {
+                        found = false;
+                        break;
+                    }
+                }
+
+                if (found)
+                {
+                    return true;
                 }
             }
 
-            return order;
+            return false;
         }
 
-        function getUnbalancedEdges(circuit, unbalancedVertices)
+        /**
+         * Exclude one element from the given array
+         * @param element The element to exclude
+         * @param A The array to look up
+         * @returns A copy of the given array excluding the given element
+         */
+        function excludeFromArray(element, A)
         {
-            var edges = initializeArrayOfIntegers(circuit.length, 0);
+            var index = A.indexOf(element);
+            var V = A;
 
-            for (var i=0; i < unbalancedVertices.length; i++)
+            if (index !== -1)
             {
-                var vertex = unbalancedVertices[i];
-                var index = [];
-
-                if (vertex.diff < 0)
+                V = [];
+                for (var i=0; i < A.length; i++)
                 {
-                    // Unbalanced destination (in) edge index
-                    index = getEdgeIndex(circuit, vertex, 'source');
-                }
-                else
-                {
-                    // Unbalanced source (out) edge index
-                    index = getEdgeIndex(circuit, vertex, 'destination');
-                }
-
-                for(var j=0; j<index.length; j++)
-                {
-                    edges[index[j]]++;
+                    if(A[i] !== element)
+                    {
+                        V.push(A[i]);
+                    }
                 }
             }
 
-            return edges;
-        }
-
-        function getEdgeIndex(circuit, vertex, type)
-        {
-            var index = [];
-
-            for(var i=0; i<circuit.length; i++)
-            {
-                var edge = circuit[i];
-
-                var id = (type === 'source') ? edge.source : edge.destination;
-
-                if (id === vertex.id)
-                {
-                    index.push(i);
-                }
-            }
-
-            return index;
+            return V;
         }
 
         function getUnbalancedVertices(size, cycle)
@@ -905,10 +1058,7 @@ angular.module('pathFinderDemo', [])
             {
                 if (degree[i].in !== degree[i].out)
                 {
-                    vertices.push({
-                        id: i,
-                        diff: degree[i].in - degree[i].out
-                    });
+                    vertices.push(i);
                 }
             }
 
