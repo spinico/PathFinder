@@ -109,40 +109,46 @@ angular.module('pathFinderDemo', [])
 
         PathFinder.getMinimumMatchingEdges = function(points, MST, distances)
         {
+            var edges = copyEdges(MST);
+            var ODV = getOddDegreeVertex(points, edges);
             var MME = [];
-            var V = []; // List of already processed vertex
+            var source;
+            var minimum;
+            var destination = null;
 
-            var ODV = getOddDegreeVertex(points, MST);
-
-            for (var i = 0; i < ODV.length; i++)
+            while (ODV.length > 0)
             {
-                var source = ODV[i];
-                var minimum = -1;
-                var destination = null;
-
-                for (var j = 0; j < ODV.length; j++)
+                // Guard conditions: cannot find matching with an odd number of vertices
+                if (ODV.length % 2)
                 {
-                    // Do not process the same odd degree vertices
-                    if (!vertexInArray(source, V) &&
-                        !vertexInArray(j, V) && i !== j)
+                    throw "The minimum matching edges cannot be found: an even number of odd degree vertices is required.";
+                }
+
+                source = ODV[0];
+                minimum = -1;
+                destination = null;
+
+                // Find minimum distance from source to another odd degree vertex
+                for (var i = 1; i < ODV.length; i++)
+                {
+                    if (minimum === -1 || distances[source][ODV[i]] < minimum)
                     {
-                        if (minimum === -1 || distances[source][ODV[j]] < minimum)
-                        {
-                            destination = ODV[j];
-                            minimum = distances[source][destination];
-                        }
+                        destination = ODV[i];
+                        minimum = distances[source][destination];
                     }
                 }
 
-                if (destination != null)
+                if (destination !== null)
                 {
-                    MME.push({
+                    var edge = {
                         source: source,
                         destination: destination
-                    });
+                    };
 
-                    V.push(source);
-                    V.push(destination);
+                    MME.push(edge);
+                    edges.push(edge);
+
+                    ODV = getOddDegreeVertex(points, edges);
                 }
             }
 
@@ -188,7 +194,7 @@ angular.module('pathFinderDemo', [])
             // Merge MST and MME
             for(var i=0; i<MST.length; i++)
             {
-                cycle.push( MST[i]);
+                cycle.push(MST[i]);
             }
 
             for(var j=0; j<MME.length; j++)
