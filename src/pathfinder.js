@@ -17,18 +17,20 @@ angular.module('pathFinderDemo', [])
         $scope.evaluate = function(start)
         {
             var root = Number(start.id);
+            var distances = $scope.data.Distances;
+            var size = distances.length;
 
-            $scope.MST = pathFinder.getMinimumSpanningTree(root, $scope.data.Distances);
+            $scope.MST = pathFinder.getMinimumSpanningTree(root, distances);
 
-            $scope.MME = pathFinder.getMinimumMatchingEdges($scope.data.Points, $scope.MST, $scope.data.Distances);
+            $scope.MME = pathFinder.getMinimumMatchingEdges($scope.MST, distances);
 
             $scope.BC = pathFinder.getBaseCycle($scope.MST, $scope.MME);
 
-            $scope.EC = pathFinder.getEulerianCircuit($scope.data.Points, root, $scope.BC);
+            $scope.EC = pathFinder.getEulerianCircuit(size, root, $scope.BC);
 
-            $scope.HC = pathFinder.getHamiltonianCircuit($scope.data.Points, root, $scope.EC, $scope.data.Distances);
+            $scope.HC = pathFinder.getHamiltonianCircuit(root, $scope.EC, distances);
 
-            $scope.OPT = pathFinder.getOptimizedCircuits($scope.HC, $scope.data.Distances);
+            $scope.OPT = pathFinder.getOptimizedCircuits($scope.HC, distances);
         };
 
     }])
@@ -107,10 +109,11 @@ angular.module('pathFinderDemo', [])
             return edge;
         }
 
-        PathFinder.getMinimumMatchingEdges = function(points, MST, distances)
+        PathFinder.getMinimumMatchingEdges = function(MST, distances)
         {
             var edges = copyEdges(MST);
-            var ODV = getOddDegreeVertex(points, edges);
+            var size = distances.length;
+            var ODV = getOddDegreeVertex(size, edges);
             var MME = [];
             var source;
             var minimum;
@@ -148,17 +151,16 @@ angular.module('pathFinderDemo', [])
                     MME.push(edge);
                     edges.push(edge);
 
-                    ODV = getOddDegreeVertex(points, edges);
+                    ODV = getOddDegreeVertex(size, edges);
                 }
             }
 
             return MME;
         };
 
-        function getOddDegreeVertex(points, MST)
+        function getOddDegreeVertex(size, MST)
         {
             var ODV = [];
-            var size = points.length;
 
             var degree = getVertexDegree(size, MST);
 
@@ -205,9 +207,8 @@ angular.module('pathFinderDemo', [])
             return cycle;
         };
 
-        PathFinder.getEulerianCircuit = function(points, root, cycle)
+        PathFinder.getEulerianCircuit = function(size, root, cycle)
         {
-            var size = points.length;
             var circuit = copyEdges(cycle);
 
             // Each vertex must have an equal number of
@@ -224,9 +225,9 @@ angular.module('pathFinderDemo', [])
             return findEulerianCircuit(root, markedCircuit);
         };
 
-        PathFinder.getHamiltonianCircuit = function(points, root, circuit, distances)
+        PathFinder.getHamiltonianCircuit = function(root, circuit, distances)
         {
-            var size = points.length;
+            var size = distances.length;
 
             var HC = copyEdges(circuit);
 
